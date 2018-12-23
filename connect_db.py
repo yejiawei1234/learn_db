@@ -16,14 +16,16 @@ with open('config5.json') as f:
     db_URI = json.load(f)
 
 print(db_URI.get('URI'))
-#engine = create_engine(db_URI)
-# metadata = MetaData()
-#
-# DBsession = sessionmaker(bind=engine)
-# session = DBsession()
-# Base = declarative_base()
-#table_i_can_read = [i for i in engine.table_names() if i.startswith('kewl')]
-#engine.dispose()
+engine = create_engine(db_URI)
+metadata = MetaData()
+
+DBsession = sessionmaker(bind=engine)
+session = DBsession()
+Base = declarative_base()
+
+
+
+
 
 
 
