@@ -11,7 +11,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import and_, or_, between, case, cast
 import json
 import pandas as pd
-
+from datetime import date
+import datetime
 
 with open('config5.json') as f:
     db_URI = json.load(f)
@@ -21,7 +22,6 @@ metadata = MetaData()
 connection = engine.connect()
 Base = declarative_base()
 
-
 # area type
 tw_area = ('TW', 'HK', 'MO', 'SG', 'MY', 'CN')
 level1 = ('SA', 'AE', 'QA')
@@ -29,15 +29,24 @@ level2 = ('JO', 'BH', 'LB', 'OM', 'KW', 'EG')
 level3 = ('MA', 'DZ')
 gb_area = ('UK', 'AU', 'NZ', 'GB')
 
-country_list = ('AE','AU','BH','BR','CA','CN','DE','DZ','EG','ES','FI','FR','HK','ID',
-							'IE','IN','IQ','IT','JO','JP','KW','LB','LT','LY','MA','MO','MR','MX',
-							'MY','NG','NL','NZ','OM','PK','PL','QA','RU','SA','SG','TH','TN','TR','TW',
-							'UK','US','VN','GB','PS')
+country_list = ('AE', 'AU', 'BH', 'BR', 'CA', 'CN', 'DE', 'DZ', 'EG', 'ES', 'FI', 'FR', 'HK', 'ID',
+                'IE', 'IN', 'IQ', 'IT', 'JO', 'JP', 'KW', 'LB', 'LT', 'LY', 'MA', 'MO', 'MR', 'MX',
+                'MY', 'NG', 'NL', 'NZ', 'OM', 'PK', 'PL', 'QA', 'RU', 'SA', 'SG', 'TH', 'TN', 'TR',
+                'TW', 'UK', 'US', 'VN', 'GB', 'PS')
 
 # media_source type
-google = ('googleadwords_int', 'googleadwordsoptimizer_int', 'wezonet', 'wezonet3', 'meitu_300', 'hinamob', 'adtime', 'imygbs2')
+google = {
+    'googleadwords_int', 'googleadwordsoptimizer_int', 'wezonet', 'wezonet3', 'meitu_300', 'hinamob', 'adtime',
+    'imygbs2'}
 
 kewl_rev = Table('kewl_mediasource_daily_monitor_v5', metadata, autoload=True, autoload_with=engine)
+
+
+today = date.today()
+month_ago = today - datetime.timedelta(days=31)
+
+
+
 
 country_ = case(
     [
@@ -70,7 +79,6 @@ platform_ = case(
     ], else_='Unknown'
 )
 
-
 zi = ('imygbs2', 'unknown')
 partner_ = case(
     [
@@ -83,7 +91,7 @@ stmt = select(
         kewl_rev.c.date,
         country_.label('area'),
         channel_.label('channel'),
-        platform_.label('platform'),
+        platform_,
         partner_.label('is_zitou'),
         func.sum(kewl_rev.c.install).label('install'),
         func.sum(kewl_rev.c.all_income3).label('all_income3'),
@@ -104,7 +112,8 @@ filter_the_all = and_(
     kewl_rev.c.partner != 'all',
     kewl_rev.c.media_source != 'all',
     kewl_rev.c.platform != 'all',
-    kewl_rev.c.country.in_(country_list)
+    kewl_rev.c.country.in_(country_list),
+    kewl_rev.c.date >= month_ago
 )
 
 # group_by_list =
@@ -112,7 +121,9 @@ filter_the_all = and_(
 
 stmt = stmt.where(filter_the_all).group_by(kewl_rev.c.date,
                                            'area',
-                                           'platform').limit(20)
+                                           'channel',
+                                           kewl_rev.c.platform,
+                                           'is_zitou').order_by(kewl_rev.c.date.desc()).limit(20)
 
 results = connection.execute(stmt).fetchall()
 df = pd.DataFrame(results)  # 这里就把results转变为了df
@@ -120,12 +131,3 @@ df.columns = results[0].keys()
 
 print(df)
 engine.dispose()
-
-
-
-
-
-
-
-
-
